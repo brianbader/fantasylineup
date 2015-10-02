@@ -18,4 +18,4 @@ Need to add:
 
 
 
-Why is this function needed? Brute force to find the best lineup would require 32*32*(32C3)*(32C2)*32*32 = 3.2876 x 10^12. This is about 3 trillion lineups, assuming only 32 starting players at each position (in reality there are more than 32 starters, so the number of real possible lineups may easily balloon into the quadrillions).
+Why is this function needed? Brute force to find the best lineup would require searching through 32x32x(32C3)x(32C2)x32x32 = 3.2876 x 10^12 combinations. This is about 3 trillion lineups, assuming only 32 starting players at each position (in reality there are more than 32 starters, so the number of real possible lineups may easily balloon into the quadrillions).
