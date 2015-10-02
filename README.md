@@ -1,5 +1,5 @@
 # fantasylineup
-Code to optimize fantasy lineup with the ability for restrictions (currently for FanDuel). Essentially, this solves a variant of the knapsack problem. 
+Code to optimize fantasy lineup with the ability for restrictions (currently for FanDuel). Essentially, this solves a variant of the knapsack problem using linear programming. 
 
 Code currently follows the FanDuel structure: D, K, WR, WR, WR, RB, RB, TE, QB
 
@@ -15,3 +15,7 @@ Need to add:
 - Custom restrictions (for example, running back and wide receiver cannot be on same team)
 
 ** Please let me know if there is any other functionality you'd like to see! **
+
+
+
+Why is this function needed? Brute force to find the best lineup would require 32*32*(32C3)*(32C2)*32*32 = 3.2876 x 10^12. This is about 3 trillion lineups, assuming only 32 starting players at each position (in reality there are more than 32 starters, so the number of real possible lineups may easily balloon into the quadrillions).
