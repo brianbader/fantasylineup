@@ -21,7 +21,7 @@ Need to add:
 Why is this function needed? Brute force to find the best lineup would require searching through 32x32x(32C3)x(32C2)x32x32 = 3.2876 x 10^12 combinations. This is about 3 trillion lineups, assuming only 32 starting players at each position (in reality there are more than 32 starters, so the number of real possible lineups may easily balloon into the quadrillions).
 
 
-And here is the top team for week 4 of the 2015 season, with an expected 178.2 points, with a $59,800 salary. Full details for this team are in the file 'output_top_team.csv'.
+And here is the top team for week 4 of the 2015 season, with an expected 178.2 points, with a $59,800 salary. Details for the top ten teams are in the file 'output_top_team.csv'.
 
  
 <table border="1">
