@@ -1,0 +1,10 @@
+Id,Position,First.Name,Last.Name,FPPG,Played,Salary,Game,Team,Opponent,Injury.Indicator,Injury.Details,TeamSalary,TotalPoints,Team_Num
+14190,WR,Julio,Jones,28.3,3,9400,HOU@ATL,ATL,HOU,Q,Hamstring,59800,178.2,1
+14225,QB,Andy,Dalton,23.9,3,7600,KC@CIN,CIN,KC,,,59800,178.2,1
+34331,RB,Latavius,Murray,16.4,3,7500,OAK@CHI,OAK,CHI,,,59800,178.2,1
+6883,WR,Larry,Fitzgerald,24.9,3,7400,STL@ARI,ARI,STL,,,59800,178.2,1
+24920,RB,Devonta,Freeman,20,3,7200,HOU@ATL,ATL,HOU,Q,Toe,59800,178.2,1
+22035,WR,Travis,Benjamin,19.3,3,6000,CLE@SD,CLE,SD,Q,Ribs,59800,178.2,1
+16923,TE,Austin,Seferian-Jenkins,14.7,2,5200,CAR@TB,TB,CAR,O,Shoulder,59800,178.2,1
+6522,K,Josh,Brown,13,3,4800,NYG@BUF,NYG,BUF,,,59800,178.2,1
+12531,D,Denver,Broncos,17.7,3,4700,MIN@DEN,DEN,MIN,,,59800,178.2,1
