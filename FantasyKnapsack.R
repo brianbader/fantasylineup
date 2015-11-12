@@ -4,25 +4,42 @@ library(lpSolveAPI)
 ## Set this to your working directory
 setwd("E:/NFLStuff/Fantasy/FantasyLineup")
 
-
+## Github page: https://github.com/geekman1/fantasylineup
+##
 ## FUNCTION ARGUMENTS:
 ##
-## train: 'players list' in .csv format when you enter a FanDuel contest. 
-## See here for more details: https://github.com/geekman1/fantasylineup
-## Can change FPPG to your expected points for that player
+## train: 'players list' in .csv format with the following 8 columns (in this order): 
+## Id (A unique numeric identifier for each player)
+## Position (One of: WR, TE, RB, QB, K, D)
+## First Name
+## Last Name
+## Expected Points
+## Salary
+## Team (player's team or defensive team)
+## Opponent (opposing team)
+## See here for the example formatting to use: https://github.com/geekman1/fantasylineup/fantasy_points.csv
+## Can change 'Expected Points' to your expected points for that player and remove all players you don't want
+## in the lineup (injuries, etc.)
 ##
-## cap: Max salary cap (for FanDuel it is usually 60,000)
+## cap: Max salary cap (for FanDuel it is currently 60,000, for DraftKings it is 50,000)
 ##
 ## constraint: 'none' for no constraints on lineup configuration
+##
 ## 'all_diff' ensures no two players are from the same team AND
 ## offensive players do not play against the chosen defense
+##
 ## 'no_opp' ensures at most two players from the same team (include defense) 
 ## AND offensive players do not face the chosen defense AND offensive 
 ## players don't face eachother (for example, if NE is playing NYG, you can't 
 ## have Odell Beckham and Tom Brady)
 ##
-## setplayers: Allows you to force lineups to be chosen with these players included
-## It should be in the same format as 'train', with your selected players chosen
+## league: Which fantasy site you are using - FanDuel or DraftKings. Each site has a 
+## slightly different lineup structure of 9 players. FanDuel currently has 
+## the lineup structure (D, K, TE, RB, RB, QB, WR, WR, WR) and DraftKings follows 
+## (D, QB, RB, RB, WR, WR, WR, TE, FLEX) where FLEX is a single additional TE/RB/WR.
+##
+## setplayers: Allows you to force lineups to be chosen with these players included. Simply 
+## include a .csv in the same format as 'train', with your selected players chosen.
 ##
 ## pointmax: allows you to set a maximum point limit (useful if you want to 
 ## generate the second best lineup, etc.)
@@ -32,7 +49,9 @@ setwd("E:/NFLStuff/Fantasy/FantasyLineup")
 
 
 find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"), 
-                       setplayers = NULL, pointmax = NULL){
+                       league = c("FanDuel", "DraftKings"), setplayers = NULL, pointmax = NULL) {
+  
+  colnames(train) <- c("Id", "Position", "FirstName", "LastName", "ExpectedPoints", "Salary", "Team", "Opponent")
 
   ## set constraints to use
   defense <- ifelse(train$Position == "D", 1, 0)
@@ -46,26 +65,36 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
   lpfantasy <- make.lp(0, nrow(train))
   
   ## Set objective function with the expected number of points
-  set.objfn(lpfantasy, train$FPPG)
+  set.objfn(lpfantasy, train$ExpectedPoints)
   
   ## Make sure the decision variables are binary
   set.type(lpfantasy, seq(1, nrow(train), by=1), type = c("binary"))
   
   ## Add some contraints
   ## Only select one defense, exactly 3 wide receivers, etc.
-  ## Depends on what fantasy league you are playing in
-  add.constraint(lpfantasy, defense, "=", 1)
-  add.constraint(lpfantasy, qb, "=", 1)
-  add.constraint(lpfantasy, wr, "=", 3)
-  add.constraint(lpfantasy, rb, "=", 2)
-  add.constraint(lpfantasy, te, "=", 1)
-  add.constraint(lpfantasy, k, "=", 1)
-  
-  team_names <- levels(factor(train$Team))  
+  ## Depends on what fantasy league you are playing in, currently for FanDuel and DraftKings
+  if(league == "FanDuel") {
+    add.constraint(lpfantasy, defense, "=", 1)
+    add.constraint(lpfantasy, qb, "=", 1)
+    add.constraint(lpfantasy, wr, "=", 3)
+    add.constraint(lpfantasy, rb, "=", 2)
+    add.constraint(lpfantasy, te, "=", 1)
+    add.constraint(lpfantasy, k, "=", 1)
+  }
+  if(league == "DraftKings") {
+    dk_total <- defense + qb + wr + rb + te + k
+    add.constraint(lpfantasy, defense, "=", 1)
+    add.constraint(lpfantasy, qb, "=", 1)
+    add.constraint(lpfantasy, wr, "<=", 4)
+    add.constraint(lpfantasy, rb, "<=", 3)
+    add.constraint(lpfantasy, te, "<=", 2)
+    add.constraint(lpfantasy, k, "=", 0)
+    add.constraint(lpfantasy, dk_total, "=", 9)
+  }
   
   ## DEPRECATED, but can uncomment if you want to impose the restrictions described on the next two lines
   ## Make sure not to select more than one WR, or more than one RB from a single team
-  ## Also, make sure not to select a WR/TE, WR/RB, RB/TE combo from same team
+  ## Constraint: make sure not to select a WR/TE, WR/RB, RB/TE combo from same team
   #for(i in 1:length(team_names)){
   #  position_check <- ifelse((train$Team == team_names[i] & 
   #                             (train$Position == "WR" | train$Position == "RB" | train$Position == "TE")), 1, 0)
@@ -78,9 +107,10 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
   ## Set objective direction
   lp.control(lpfantasy, sense='max')
   
+  team_names <- levels(factor(train$Team))
   constraint <- match.arg(constraint)
-  if(constraint == "all_diff"){
-    for(i in 1:length(team_names)){
+  if(constraint == "all_diff") {
+    for(i in 1:length(team_names)) {
       ## label opponent of each player (what defense they are playing against)
       check <- ifelse(train$Opponent == team_names[i], 1, 0)
       ## label only that defense with a 1
@@ -91,21 +121,20 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
     }
   }
   
-  
-  if(constraint == "no_opp"){
+  if(constraint == "no_opp") {
     team_names <- levels(factor(train$Team))  
-    for(i in 1:length(team_names)){
+    for(i in 1:length(team_names)) {
       ## No more than two players from each team (including that team's defense)
       no_two <- ifelse(train$Team == team_names[i], 1, 0)
       add.constraint(lpfantasy, no_two, "<=", 2)
     }
-    for(j in 1:nrow(train)){
+    for(j in 1:nrow(train)) {
       no_opposing <- ifelse(train$Opponent == train$Team[j], 1, 0)
       no_opposing[j] <- 1
       ## To deal with defenses (since Team and Opponent are swtiched for defenses)
       no_opposing <- ifelse(train$Position == "D", 0, no_opposing) 
       no_opposing <- ifelse((train$Team == train$Opponent[j] & train$Position == "D"), 1, no_opposing)
-      for(k in 1:nrow(train)){
+      for(k in 1:nrow(train)) {
         out <- rep(0, nrow(train))
         out[j] <- 1
         out[k] <- no_opposing[k]
@@ -113,35 +142,41 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
       }
     }
   }
-  
-  
-  if(!is.null(setplayers)){
-    if((sum(setplayers$Position == "WR") > 3) || (sum(setplayers$Position == "RB") > 2) || (sum(setplayers$Position == "QB") > 1) ||
-        (sum(setplayers$Position == "TE") > 1) || (sum(setplayers$Position == "K") > 1) || (sum(setplayers$Position == "D") > 1))
-      stop("One of your positions has too many players")
-    
+   
+  if(!is.null(setplayers)) {
+    if(league == "FanDuel") {
+      if((sum(setplayers$Position == "WR") > 3) || (sum(setplayers$Position == "RB") > 2) || (sum(setplayers$Position == "QB") > 1) ||
+          (sum(setplayers$Position == "TE") > 1) || (sum(setplayers$Position == "K") > 1) || (sum(setplayers$Position == "D") > 1))
+        stop("One of your positions has too many players")
+    }
+    if(league == "DraftKings") {
+      if((sum(setplayers$Position == "WR") > 4) || (sum(setplayers$Position == "RB") > 3) || (sum(setplayers$Position == "QB") > 1) ||
+           (sum(setplayers$Position == "TE") > 2) || (sum(setplayers$Position == "K") > 0) || (sum(setplayers$Position == "D") > 1))
+        stop("One of your positions has too many players")
+    }
     ## Set constraints that each player here must be in lineup
-    for(k in 1:nrow(setplayers)){
+    for(k in 1:nrow(setplayers)) {
       add.constraint(lpfantasy, ifelse(setplayers$Id[k] == train$Id, 1, 0), "=", 1)
     }
   }
   
-  if(!is.null(pointmax)) add.constraint(lpfantasy, train$FPPG, "<", pointmax)
+  if(!is.null(pointmax))
+    add.constraint(lpfantasy, train$ExpectedPoints, "<", pointmax)
 
   team <- data.frame(matrix(0, 1, ncol(train)+2))
   colnames(team) <- c(colnames(train), "TeamSalary", "TotalPoints")
 
   ## Solve the model, if this returns 0 an optimal solution is found
   solve(lpfantasy)
-  if(solve(lpfantasy) != 0) stop("Optimization failed at some step")
+  if(solve(lpfantasy) != 0)
+    stop("Optimization failed at some step")
   
   ## Get the players on the team
   team_select <- subset(data.frame(train, get.variables(lpfantasy)), get.variables.lpfantasy. == 1)
   team_select$get.variables.lpfantasy. <- NULL
   team_select$TeamSalary <- sum(team_select$Salary)
-  team_select$TotalPoints <- sum(team_select$FPPG)
+  team_select$TotalPoints <- sum(team_select$ExpectedPoints)
   team <- rbind(team, team_select)
-
   team <- team[-1,]
   team
 }
@@ -151,42 +186,43 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
 #################################################################
 
 ## Remove all injuries and non-desireable players first
-## Change the FPPG column to the number of points you expect 
-## the player to make this upcoming week. Currently, the excel 
-## output is just the average of their points in previous weeks.
-## Keep the format as it is output by FanDuel
-train <- read.csv("fantasy_duel_points.csv", header = T)
+## Change the 'Expected Points' column to the number of points you expect 
+## the player to make this upcoming week and make sure to include up to date 
+## matchup information (which teams will be playing eachother).
+train <- read.csv("fantasy_points.csv", header = T)
 
 ## Returns the top ten teams with no constraints, subject to the max salary cap of 60,000
-test1 <- find_teams(train, 60000, constraint = "none", setplayers = NULL, pointmax = NULL)
+test1 <- find_teams(train, 60000, constraint = "none", league = "FanDuel", setplayers = NULL, pointmax = NULL)
 
 ## Some desirable constraints (don't play against yourself!)
-test2 <- find_teams(train, 60000, constraint = "no_opp", setplayers = NULL, pointmax = NULL)
+test2 <- find_teams(train, 60000, constraint = "no_opp", league = "FanDuel", setplayers = NULL, pointmax = NULL)
 
 ## Now restrict so that no two players can be on the same team AND
 ## offensive players do not play against the chosen defense
-test3 <- find_teams(train, 60000, constraint = "all_diff", setplayers = NULL, pointmax = NULL)
+test3 <- find_teams(train, 60000, constraint = "all_diff", league = "FanDuel", setplayers = NULL, pointmax = NULL)
 
 ## Keep Aaron Rodgers and Seattle Seahawks defense
 setplayers <- subset(train, (Id == 6894 | Id == 12550))
-test4 <- find_teams(train, 60000, constraint = "none", setplayers = setplayers, pointmax = NULL)
+test4 <- find_teams(train, 60000, constraint = "none", league = "FanDuel", setplayers = setplayers, pointmax = NULL)
 
 
 
 ## Small function to generate the top set of teams
 ## All arguments are the same, except you must enter the number of top teams to return - 'num_top'
 
-top_teams <- function(train, num_top, cap, constraint, setplayers = NULL, pointmax = NULL){
-  result <- find_teams(train, cap, constraint = constraint, setplayers = setplayers, pointmax = pointmax)
+top_teams <- function(train, num_top, cap, constraint, league, setplayers = NULL, pointmax = NULL) {
+  result <- find_teams(train, cap, constraint = constraint, league = league, setplayers = setplayers, pointmax = pointmax)
   j <- 1
-  while(j < num_top){
-    result <- rbind(result, find_teams(train, cap, constraint = constraint, setplayers = setplayers, 
+  while(j < num_top) {
+    result <- rbind(result, find_teams(train, cap, constraint = constraint, league = league, setplayers = setplayers, 
                                        pointmax = (result$TotalPoints[nrow(result)] - .001)))
     j <- j+1
   }
+  TeamNumber <- rep(1:num_top, each = 9)
+  result <- cbind.data.frame(result, TeamNumber)
   result
 }
 
-## Generate the top 5 teams with no constraints (this may be a bit slow with other constraints)
-test5 <- top_teams(train, 5, 60000, constraint = "none")
+## Generate the top 10 teams with no constraints (this may be a bit slow with other constraints)
+test5 <- top_teams(train, 10, 60000, constraint = "none", league = "FanDuel")
 
