@@ -25,7 +25,7 @@ Need to add:
 
 
 
-** There is now an R Shiny app available for this: http://geekman1.shinyapps.io/FF_Lineup_Optimizer **
+## There is now an R Shiny app available for this: http://geekman1.shinyapps.io/FF_Lineup_Optimizer
 
 
 
