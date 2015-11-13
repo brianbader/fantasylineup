@@ -162,14 +162,22 @@ top_teams <- function(train, num_top, cap, constraint, league, setplayers = NULL
 
 shinyServer(function(input, output) {
   
-  x <- reactive({ r <- read.csv((input$fileup)$datapath, sep=",", header = TRUE) }) 
-  out1 <- reactive({ out <- top_teams(x(), input$num_top, input$cap, constraint = input$constraints, league = input$league) })
+  pl_all <- reactive({ x1 <- read.csv((input$player_all)$datapath, sep=",", header = TRUE) })
+  pl_set <- reactive({ x2 <- read.csv((input$player_set)$datapath, sep=",", header = TRUE) })
+  
+  out1 <- reactive({ out <- top_teams(pl_all(), input$num_top, input$cap, constraint = input$constraints, league = input$league) })
+  out2 <- reactive({ out <- top_teams(pl_all(), input$num_top, input$cap, constraint = input$constraints, league = input$league, 
+                                      setplayers = pl_set()) })
   
   output$mytable <- renderDataTable({ 
-    if(is.null(input$fileup)) {
+    if(is.null(input$player_all)) {
       return(NULL)
-    } else{
-      out1() 
+    } else {
+      if(is.null(input$player_set)) {
+        out1()
+      } else {
+        out2()    
+      }
     }
   })
   

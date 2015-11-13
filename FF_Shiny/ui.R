@@ -16,14 +16,18 @@ shinyUI(fluidPage(
   # Sidebar with a slider input for number of bins
   sidebarLayout(
     sidebarPanel(
-      helpText("App to generate the top fantasy teams for FanDuel and DraftKings. Upload a file in the format of the 
-sample file below to generate top teams based on the expected points given. Adding constraints significantly slows down 
-the team generation, so test with just the single top team first. Constraints refer to restrictions #1 and #2 in the 
-github readme, respectively. See the github link below for details.
+      helpText("App to generate the top fantasy teams for FanDuel and DraftKings. Upload files in the format of the 
+sample files below to generate top teams based on the expected points given. 'All Players' (required) is the file 
+containing all players used to generate the lineups. 'Forced Players' (optional) contains players that you want to force 
+into all generated lineups. If you want to exclude players from being used, simply don't include them in either file. 
+Adding constraints significantly slows down the team generation, so test with just the single top team first. Constraints 
+refer to restrictions #1 and #2 in the github readme, respectively. See the github link below for details.
 "),
       a("Github Fantasy Lineup", href = "https://github.com/geekman1/fantasylineup/"),
       tags$div(HTML("<br>")),
-      a("Sample File", href = "https://www.dropbox.com/s/dqwtjklhfhy473g/fantasy_points.csv?dl=0"),
+      a("All Players Sample File", href = "https://www.dropbox.com/s/dqwtjklhfhy473g/fantasy_points.csv?dl=0"),
+      tags$div(HTML("<br>")),
+      a("Forced Players Sample File", href = "https://www.dropbox.com/s/2qpt3ydmztyqkn3/player_set.csv?dl=0"),
       tags$hr(),
       numericInput("cap", 
                    "Salary Cap:",
@@ -41,7 +45,9 @@ github readme, respectively. See the github link below for details.
       selectInput("league", 
                   "Choose League:",
                   c("FanDuel" = "FanDuel", "DraftKings" = "DraftKings")),
-      fileInput("fileup", "Upload CSV File:", FALSE, 
+      fileInput("player_all", "Upload CSV File Of All Players:", FALSE, 
+                c("csv")),
+      fileInput("player_set", "Upload CSV File Of Forced Players (Optional):", FALSE, 
                 c("csv")),
       submitButton("Submit")
     ),

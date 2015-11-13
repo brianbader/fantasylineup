@@ -23,7 +23,9 @@ Need to add:
 
 - Custom restrictions (for example, running back and wide receiver cannot be on same team)
 
-** Please let me know if there is any other functionality you'd like to see! **
+
+
+** There is now an R Shiny app available for this: http://geekman1.shinyapps.io/FF_Lineup_Optimizer **
 
 
 
