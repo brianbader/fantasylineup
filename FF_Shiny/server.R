@@ -10,7 +10,7 @@ library(DT)
 
 ## Function used to generate teams
 find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"), 
-                       league = c("FanDuel", "DraftKings"), setplayers = NULL, pointmax = NULL) {
+                       league = c("FanDuel", "DraftKings"), setplayers = NULL, removeteams = NULL) {
   
   colnames(train) <- c("Id", "Position", "FirstName", "LastName", "ExpectedPoints", "Salary", "Team", "Opponent")
   
@@ -107,12 +107,12 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
   if(!is.null(setplayers)) {
     if(league == "FanDuel") {
       if((sum(setplayers$Position == "WR") > 3) || (sum(setplayers$Position == "RB") > 2) || (sum(setplayers$Position == "QB") > 1) ||
-           (sum(setplayers$Position == "TE") > 1) || (sum(setplayers$Position == "K") > 1) || (sum(setplayers$Position == "D") > 1))
+         (sum(setplayers$Position == "TE") > 1) || (sum(setplayers$Position == "K") > 1) || (sum(setplayers$Position == "D") > 1))
         stop("One of your positions has too many players")
     }
     if(league == "DraftKings") {
       if((sum(setplayers$Position == "WR") > 4) || (sum(setplayers$Position == "RB") > 3) || (sum(setplayers$Position == "QB") > 1) ||
-           (sum(setplayers$Position == "TE") > 2) || (sum(setplayers$Position == "K") > 0) || (sum(setplayers$Position == "D") > 1))
+         (sum(setplayers$Position == "TE") > 2) || (sum(setplayers$Position == "K") > 0) || (sum(setplayers$Position == "D") > 1))
         stop("One of your positions has too many players")
     }
     ## Set constraints that each player here must be in lineup
@@ -121,10 +121,15 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
     }
   }
   
-  if(!is.null(pointmax))
-    add.constraint(lpfantasy, train$ExpectedPoints, "<", pointmax)
+  if(!is.null(removeteams)) {
+    if(nrow(removeteams) != nrow(train))
+      stop("Your team restrictions do not match the number of players included in the 'train' file")
+    for(m in 1:ncol(removeteams)) {
+      add.constraint(lpfantasy, removeteams[, m], "<=", 8)
+    }
+  }
   
-  team <- data.frame(matrix(0, 1, ncol(train)+2))
+  team <- data.frame(matrix(0, 1, ncol(train) + 2))
   colnames(team) <- c(colnames(train), "TeamSalary", "TotalPoints")
   
   ## Solve the model, if this returns 0 an optimal solution is found
@@ -139,25 +144,29 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
   team_select$TotalPoints <- sum(team_select$ExpectedPoints)
   team <- rbind(team, team_select)
   team <- team[-1,]
+  rownames(team) <- NULL
   team
 }
 
 
-top_teams <- function(train, num_top, cap, constraint, league, setplayers = NULL, pointmax = NULL) {
-  result <- find_teams(train, cap, constraint = constraint, league = league, setplayers = setplayers, pointmax = pointmax)
+top_teams <- function(train, num_top, cap, constraint, league, setplayers = NULL) {
+  result <- find_teams(train, cap, constraint = constraint, league = league, setplayers = setplayers)
+  restrict <- as.matrix(rep(0, nrow(train)))
+  restrict[match(result$Id, train$Id), 1] <- 1
   j <- 1
+  
   while(j < num_top) {
-    result <- rbind(result, find_teams(train, cap, constraint = constraint, league = league, setplayers = setplayers, 
-                                       pointmax = (result$TotalPoints[nrow(result)] - .001)))
-    j <- j+1
+    resultnew <- find_teams(train, cap, constraint = constraint, league = league, setplayers = setplayers, removeteams = restrict)
+    restrict <- cbind(restrict, rep(0, nrow(restrict)))
+    restrict[match(resultnew$Id, train$Id), j] <- 1
+    result <- rbind(result, resultnew)
+    j <- j + 1
   }
+  
   TeamNumber <- rep(1:num_top, each = 9)
   result <- cbind.data.frame(result, TeamNumber)
   result
 }
-
-
-
 
 
 shinyServer(function(input, output) {

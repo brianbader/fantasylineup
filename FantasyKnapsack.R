@@ -41,15 +41,18 @@ setwd("E:/NFLStuff/Fantasy/FantasyLineup")
 ## setplayers: Allows you to force lineups to be chosen with these players included. Simply 
 ## include a .csv in the same format as 'train', with your selected players chosen.
 ##
-## pointmax: allows you to set a maximum point limit (useful if you want to 
-## generate the second best lineup, etc.)
+## removeteams: Allows you to remove certain teams from being considered. Slightly different 
+## than simply removing players from the 'train' file in that this only removes specific 
+## teams. It is used in the 'top_teams' function. Should be a matrix, with each column 
+## a binary vector indicating the selected players for a single team; each column is a 
+## different team; find_teams' then removes these teams.
 ##
 ## Function returns the top lineup under your constraints, with each team's
 ## expected total points and the total salary used (will be under the cap)
 
 
 find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"), 
-                       league = c("FanDuel", "DraftKings"), setplayers = NULL, pointmax = NULL) {
+                       league = c("FanDuel", "DraftKings"), setplayers = NULL, removeteams = NULL) {
   
   colnames(train) <- c("Id", "Position", "FirstName", "LastName", "ExpectedPoints", "Salary", "Team", "Opponent")
 
@@ -160,10 +163,15 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
     }
   }
   
-  if(!is.null(pointmax))
-    add.constraint(lpfantasy, train$ExpectedPoints, "<", pointmax)
+  if(!is.null(removeteams)) {
+    if(nrow(removeteams) != nrow(train))
+      stop("Your team restrictions do not match the number of players included in the 'train' file")
+    for(m in 1:ncol(removeteams)) {
+      add.constraint(lpfantasy, removeteams[, m], "<=", 8)
+    }
+  }
 
-  team <- data.frame(matrix(0, 1, ncol(train)+2))
+  team <- data.frame(matrix(0, 1, ncol(train) + 2))
   colnames(team) <- c(colnames(train), "TeamSalary", "TotalPoints")
 
   ## Solve the model, if this returns 0 an optimal solution is found
@@ -178,6 +186,7 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
   team_select$TotalPoints <- sum(team_select$ExpectedPoints)
   team <- rbind(team, team_select)
   team <- team[-1,]
+  rownames(team) <- NULL
   team
 }
 
@@ -192,32 +201,38 @@ find_teams <- function(train, cap, constraint = c("none", "all_diff", "no_opp"),
 train <- read.csv("fantasy_points.csv", header = T)
 
 ## Returns the top ten teams with no constraints, subject to the max salary cap of 60,000
-test1 <- find_teams(train, 60000, constraint = "none", league = "FanDuel", setplayers = NULL, pointmax = NULL)
+test1 <- find_teams(train, 60000, constraint = "none", league = "FanDuel", setplayers = NULL, removeteams = NULL)
 
 ## Some desirable constraints (don't play against yourself!)
-test2 <- find_teams(train, 60000, constraint = "no_opp", league = "FanDuel", setplayers = NULL, pointmax = NULL)
+test2 <- find_teams(train, 60000, constraint = "no_opp", league = "FanDuel", setplayers = NULL, removeteams = NULL)
 
 ## Now restrict so that no two players can be on the same team AND
 ## offensive players do not play against the chosen defense
-test3 <- find_teams(train, 60000, constraint = "all_diff", league = "FanDuel", setplayers = NULL, pointmax = NULL)
+test3 <- find_teams(train, 60000, constraint = "all_diff", league = "FanDuel", setplayers = NULL, removeteams = NULL)
 
 ## Keep Aaron Rodgers and Seattle Seahawks defense
 setplayers <- subset(train, (Id == 6894 | Id == 12550))
-test4 <- find_teams(train, 60000, constraint = "none", league = "FanDuel", setplayers = setplayers, pointmax = NULL)
+test4 <- find_teams(train, 60000, constraint = "none", league = "FanDuel", setplayers = setplayers, removeteams = NULL)
 
 
 
 ## Small function to generate the top set of teams
 ## All arguments are the same, except you must enter the number of top teams to return - 'num_top'
 
-top_teams <- function(train, num_top, cap, constraint, league, setplayers = NULL, pointmax = NULL) {
-  result <- find_teams(train, cap, constraint = constraint, league = league, setplayers = setplayers, pointmax = pointmax)
+top_teams <- function(train, num_top, cap, constraint, league, setplayers = NULL) {
+  result <- find_teams(train, cap, constraint = constraint, league = league, setplayers = setplayers)
+  restrict <- as.matrix(rep(0, nrow(train)))
+  restrict[match(result$Id, train$Id), 1] <- 1
   j <- 1
+  
   while(j < num_top) {
-    result <- rbind(result, find_teams(train, cap, constraint = constraint, league = league, setplayers = setplayers, 
-                                       pointmax = (result$TotalPoints[nrow(result)] - .001)))
-    j <- j+1
+    resultnew <- find_teams(train, cap, constraint = constraint, league = league, setplayers = setplayers, removeteams = restrict)
+    restrict <- cbind(restrict, rep(0, nrow(restrict)))
+    restrict[match(resultnew$Id, train$Id), j] <- 1
+    result <- rbind(result, resultnew)
+    j <- j + 1
   }
+  
   TeamNumber <- rep(1:num_top, each = 9)
   result <- cbind.data.frame(result, TeamNumber)
   result

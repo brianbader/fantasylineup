@@ -37,7 +37,7 @@ refer to restrictions #1 and #2 in the github readme, respectively. See the gith
       numericInput("num_top", 
                    "Number of Top Teams:",
                    min = 1,
-                   max = 5,
+                   max = 100,
                    value = 1),
       selectInput("constraints", 
                   "Type of Constraint:",
